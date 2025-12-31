@@ -28,25 +28,26 @@ st.markdown("""
         border: 2px solid #FF5F1F; border-radius: 10px;
         overflow: hidden; background: #000;
     }
-    .img-neon { width: 100%; height: 100%; object-fit: cover; }
+    .img-neon { width: 100%; height: 100%; object-fit: contain; background: #000; }
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
         font-size: 16px !important; color: #ffffff !important;
         text-shadow: 0 0 8px #FF5F1F !important;
         min-height: 50px; display: flex; align-items: center; justify-content: center;
+        text-transform: uppercase;
     }
     .pie-pagina {
         text-align: center; font-family: 'Orbitron', sans-serif;
-        color: #FF5F1F; font-size: 13px; margin-top: 50px;
+        color: #FF5F1F; font-size: 14px; margin-top: 50px;
         padding: 40px; border-top: 2px solid #FF5F1F;
-        background: rgba(0,0,0,0.9);
+        background: rgba(0,0,0,0.9); line-height: 1.6;
     }
     @keyframes vibracion { 0% { transform: translate(0); } 50% { transform: translate(-1px, 1px); } 100% { transform: translate(0); } }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DESCARGA ---
+# --- FUNCIÓN DESCARGA (CON POLVOS DE DIAMANTE) ---
 def hacer_magia(url_descarga, nombre_archivo):
     try:
         headers = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://myrient.erista.me/'}
@@ -70,7 +71,7 @@ def hacer_magia(url_descarga, nombre_archivo):
     except Exception as e:
         st.error(f"Error: {e}")
 
-# --- PESTAÑAS ---
+# --- PESTAÑAS Y MAPEO DE CONSOLAS ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -85,18 +86,18 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# FILTROS DE BÚSQUEDA EXTREMOS
+# MAPEO PARA BÚSQUEDA DE CARÁTULAS ORIGINALES
 consola_real_map = {
-    "Dolphin (GC)": "Nintendo GameCube GC Official Cover",
-    "Dolphin (Wii)": "Nintendo Wii White Case ONLY BoxArt",
-    "Cemu": "Nintendo Wii U Blue Case ONLY Official Art",
-    "RPCS3": "Sony PS3 PlayStation 3 Official BoxArt",
-    "Xenia": "Xbox 360 Official BoxArt",
-    "Xemu": "Original Xbox Classic Official Art",
-    "PCSX2": "Sony PS2 PlayStation 2 ONLY BoxArt",
-    "DuckStation": "Sony PS1 PlayStation 1 Original Cover",
-    "PPSSPP": "Sony PSP Handheld Official Art",
-    "Dreamcast": "Sega Dreamcast Official Art"
+    "Dolphin (GC)": "GameCube original cover scan",
+    "Dolphin (Wii)": "Nintendo Wii original cover scan",
+    "Cemu": "Wii U ONLY original cover scan",
+    "RPCS3": "PS3 original cover scan",
+    "Xenia": "Xbox 360 original cover scan",
+    "Xemu": "Xbox original cover scan",
+    "PCSX2": "PS2 original cover scan",
+    "DuckStation": "PS1 original cover scan",
+    "PPSSPP": "PSP original cover scan",
+    "Dreamcast": "Dreamcast original cover scan"
 }
 
 @st.cache_data(ttl=3600)
@@ -107,10 +108,11 @@ def obtener_lista(url):
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
+# FILTROS
 abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-idx_abc = st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
+idx_abc = st.select_slider('🎮 FILTRAR POR LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
 letra_sel = abc[idx_abc]
-busq = st.text_input("🔍 BUSCAR:", "").lower()
+busq = st.text_input("🔍 BUSCAR JUEGO:", "").lower()
 
 tabs = st.tabs(tab_names)
 for i, tab in enumerate(tabs):
@@ -125,14 +127,14 @@ for i, tab in enumerate(tabs):
         juegos_per_page = 12
         total_p = max((len(filtrados)-1)//juegos_per_page + 1, 1)
 
-        # BOTONES ARRIBA
+        # --- NAVEGACIÓN ARRIBA ---
         c1, c2, c3 = st.columns([1,1,1])
         with c1:
-            if st.button("⬅️ ANTERIOR", key=f"up_p_{i}"):
+            if st.button("⬅️ ANTERIOR", key=f"u_prev_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
         with c2: st.markdown(f"<h3 style='text-align:center;'>{st.session_state[key_pag]} / {total_p}</h3>", unsafe_allow_html=True)
         with c3:
-            if st.button("SIGUIENTE ➡️", key=f"up_n_{i}"):
+            if st.button("SIGUIENTE ➡️", key=f"u_next_{i}"):
                 if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
 
         st.divider()
@@ -143,20 +145,25 @@ for i, tab in enumerate(tabs):
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 emulador_puro = tab_names[i].split(" ", 1)[-1]
                 termino = consola_real_map.get(emulador_puro, emulador_puro)
-                # Búsqueda ultra-específica
-                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(nombre_visual + ' ' + termino)}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
-                st.markdown(f'''<div class="tarjeta-juego"><div class="contenedor-caratula"><img src="{url_img}" class="img-neon"></div><span class="nombre-juego-gigante">{nombre_visual}</span></div>''', unsafe_allow_html=True)
+                # Búsqueda de Scan Original
+                busqueda_final = f"{nombre_visual} {termino}"
+                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(busqueda_final)}&w=500&h=700&c=7&rs=1&p=0&pid=ImgDetMain"
+                
+                st.markdown(f'''<div class="tarjeta-juego">
+                    <div class="contenedor-caratula"><img src="{url_img}" class="img-neon"></div>
+                    <span class="nombre-juego-gigante">{nombre_visual}</span>
+                </div>''', unsafe_allow_html=True)
                 if st.button("✨ MAGIA ✨", key=f"btn_{i}_{juego}"): hacer_magia(urls_base[i] + juego, juego)
 
-        # BOTONES ABAJO
+        # --- NAVEGACIÓN ABAJO ---
         st.divider()
         b1, b2, b3 = st.columns([1,1,1])
         with b1:
-            if st.button("⬅️ ANTERIOR ", key=f"dw_p_{i}"):
+            if st.button("⬅️ PÁGINA ANTERIOR", key=f"d_prev_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with b2: st.markdown(f"<h3 style='text-align:center;'>PÁGINA {st.session_state[key_pag]}</h3>", unsafe_allow_html=True)
+        with b2: st.markdown(f"<h3 style='text-align:center;'>PÁG {st.session_state[key_pag]}</h3>", unsafe_allow_html=True)
         with b3:
-            if st.button("SIGUIENTE ➡️ ", key=f"dw_n_{i}"):
+            if st.button("PÁGINA SIGUIENTE ➡️", key=f"d_next_{i}"):
                 if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
 
 # --- PIE DE PÁGINA: DERECHOS ---
