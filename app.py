@@ -8,7 +8,7 @@ from io import BytesIO
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 OPTIMIZADO PARA MÓVIL ---
+# --- CSS: ESTILO POLACO 666 (IDÉNTICO AL EXE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
@@ -16,12 +16,11 @@ st.markdown("""
     .stApp { background: #08090b; color: #00ffc3; }
     
     .logo-666 {
-        font-family: 'Black Ops One', cursive; font-size: 50px;
+        font-family: 'Black Ops One', cursive; font-size: 60px;
         text-align: center; margin-top: 10px; color: #FF5F1F; 
         animation: vibracion 0.3s linear infinite;
     }
 
-    /* EFECTO ZOOM EN PESTAÑAS */
     button[data-baseweb="tab"] {
         transition: all 0.3s ease-in-out !important;
     }
@@ -70,45 +69,36 @@ st.markdown("""
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DESCARGA CON BARRA Y BOTÓN FINAL ---
+# --- FUNCIÓN DESCARGA (SIN TKINTER, PARA WEB) ---
 def hacer_magia(url_descarga, nombre_archivo):
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
             'Referer': 'https://myrient.erista.me/'
         }
-        
         with requests.get(url_descarga, stream=True, timeout=None, headers=headers) as r:
             r.raise_for_status()
             total_size = int(r.headers.get('content-length', 0))
             progreso = st.progress(0)
             texto_status = st.empty()
-            
             buffer = BytesIO()
             descargado = 0
-            
-            for chunk in r.iter_content(chunk_size=1048576): # 1MB
+            for chunk in r.iter_content(chunk_size=1048576):
                 if chunk:
                     buffer.write(chunk)
                     descargado += len(chunk)
                     if total_size > 0:
                         porcentaje = min(descargado / total_size, 1.0)
                         progreso.progress(porcentaje)
-                        # PERSONALIZACIÓN: "polvos de diamante"
+                        # AQUÍ TIENES TUS POLVOS DE DIAMANTE
                         texto_status.markdown(f"<h3 style='color:#00ff00; text-align:center;'>⚡ {int(porcentaje*100)}% - {descargado//1048576} / {total_size//1048576} POLVOS DE DIAMANTE ⚡</h3>", unsafe_allow_html=True)
             
             st.balloons()
-            st.success("¡PREPARACIÓN COMPLETADA!")
-            st.download_button(
-                label="💾 PULSA AQUÍ PARA GUARDAR JUEGO EN MÓVIL",
-                data=buffer.getvalue(),
-                file_name=nombre_archivo,
-                mime="application/octet-stream"
-            )
+            st.download_button(label="💾 GUARDAR JUEGO", data=buffer.getvalue(), file_name=nombre_archivo)
     except Exception as e:
-        st.error(f"Fallo de conexión: {e}")
+        st.error(f"Error: {e}")
 
-# --- LISTAS Y URLs (ORDENADAS POR EMULADOR) ---
+# --- CONFIGURACIÓN DE PESTAÑAS (NOMBRES DE EMULADORES) ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -123,8 +113,9 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# --- TRADUCTOR DE EMULADOR A CONSOLA PARA BING ---
-consola_map = {
+# --- TRADUCTOR CLAVE PARA QUE BING NO SE MEZCLE ---
+# Este diccionario traduce el nombre del emulador de la pestaña a la consola real para Bing
+consola_real_map = {
     "Dolphin (GC)": "Nintendo GameCube",
     "Dolphin (Wii)": "Nintendo Wii",
     "Cemu": "Nintendo Wii U",
@@ -145,16 +136,12 @@ def obtener_lista(url):
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
-# --- FILTROS ---
-def reset_pagina():
-    for i in range(10): st.session_state[f'pag_{i}'] = 1
-
+# --- FILTROS Y NAVEGACIÓN ---
 abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-idx_abc = st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x], on_change=reset_pagina)
+idx_abc = st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
 letra_sel = abc[idx_abc]
-busq = st.text_input("🔍 BUSCAR JUEGO:", "", on_change=reset_pagina).lower()
+busq = st.text_input("🔍 BUSCAR JUEGO:", "").lower()
 
-# --- TABS ---
 tabs = st.tabs(tab_names)
 for i, tab in enumerate(tabs):
     with tab:
@@ -166,33 +153,36 @@ for i, tab in enumerate(tabs):
         if letra_sel != "TODOS":
             filtrados = [x for x in filtrados if x and (x[0].isalpha() == False if letra_sel == "#" else x.upper().startswith(letra_sel))]
         
-        juegos_por_pagina = 12 
+        juegos_por_pagina = 12
         total_pags = max((len(filtrados) - 1) // juegos_por_pagina + 1, 1)
 
+        # Controles de página
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
-            if st.button("⬅️", key=f"up_p_{i}"):
+            if st.button("⬅️", key=f"p_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
         with c2: st.write(f"Pág {st.session_state[key_pag]}/{total_pags}")
         with c3:
-            if st.button("➡️", key=f"up_n_{i}"):
+            if st.button("➡️", key=f"n_{i}"):
                 if st.session_state[key_pag] < total_pags: st.session_state[key_pag] += 1; st.rerun()
 
         st.divider()
         inicio = (st.session_state[key_pag] - 1) * juegos_por_pagina
         fin = inicio + juegos_por_pagina
-        
         cols = st.columns(2)
+        
         for idx, juego in enumerate(filtrados[inicio:fin]):
             with cols[idx % 2]:
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 
-                # --- MEJORA DE IMÁGENES POR EMULADOR ---
-                nombre_emulador = tab_names[i].split(" ")[-1]
-                consola_real = consola_map.get(nombre_emulador, nombre_emulador)
+                # --- LA SOLUCIÓN MAESTRA ---
+                # 1. Cogemos el nombre del emulador de la pestaña (quitando el icono)
+                emulador_puro = tab_names[i].split(" ", 1)[-1]
+                # 2. Lo traducimos a consola real (ej: Cemu -> Nintendo Wii U)
+                consola_bing = consola_real_map.get(emulador_puro, emulador_puro)
                 
-                # Forzamos a Bing a buscar la carátula oficial de la consola real
-                busqueda_bing = urllib.parse.quote(f"{nombre_visual} {consola_real} official box art")
+                # 3. Buscamos: Consola + Juego + "box art" (esta combinación no falla)
+                busqueda_bing = urllib.parse.quote(f"{consola_bing} {nombre_visual} official box art cover")
                 img_url = f"https://www.bing.com/th?q={busqueda_bing}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
                 
                 st.markdown(f'''<div class="tarjeta-juego">
@@ -203,4 +193,4 @@ for i, tab in enumerate(tabs):
                 if st.button("✨ MAGIA ✨", key=f"dl_{i}_{juego}"):
                     hacer_magia(urls_base[i] + juego, juego)
 
-st.markdown("""<div style='text-align:center; padding:20px; color:#FF5F1F;'>POLACO 666 | POLVOS DE DIAMANTE</div>""", unsafe_allow_html=True)
+st.markdown("""<div style='text-align:center; padding:40px; color:#FF5F1F; font-family:Orbitron;'>POLACO 666 | POLVOS DE DIAMANTE</div>""", unsafe_allow_html=True)
