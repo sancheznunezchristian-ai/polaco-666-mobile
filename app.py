@@ -2,12 +2,11 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import urllib.parse
 import requests
-from io import BytesIO
 
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 ---
+# --- CSS: ESTILO POLACO 666 OPTIMIZADO PARA ESCRITURA EN DISCO MÓVIL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
@@ -15,15 +14,16 @@ st.markdown("""
     
     .logo-666 {
         font-family: 'Black Ops One', cursive; font-size: 35px;
-        text-align: center; margin: 10px 0; color: #FF5F1F; 
+        text-align: center; margin: 15px 0; color: #FF5F1F; 
         text-shadow: 2px 2px #000;
     }
 
     .tarjeta-juego {
         background: #111;
         padding: 0px; border-radius: 12px;
-        border: 2px solid #FF5F1F; margin-bottom: 15px;
+        border: 2px solid #FF5F1F; margin-bottom: 20px;
         overflow: hidden; height: 460px;
+        display: flex; flex-direction: column;
     }
 
     .contenedor-img {
@@ -37,63 +37,36 @@ st.markdown("""
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
         font-size: 11px !important; color: #ffffff !important;
-        text-align: center; display: flex;
-        align-items: center; justify-content: center;
-        padding: 8px; height: 60px;
-        text-transform: uppercase; line-height: 1.1;
-        background: #1a1a1a;
+        text-align: center; padding: 10px; height: 60px;
+        text-transform: uppercase; background: #1a1a1a;
+        display: flex; align-items: center; justify-content: center;
     }
 
-    .stButton > button {
-        width: 100% !important; height: 50px !important;
-        background: #FF5F1F !important; color: white !important;
-        border: none !important; font-weight: bold !important;
-        font-family: 'Orbitron', sans-serif !important;
+    /* BOTÓN DE DESCARGA DIRECTA AL DISCO DEL DISPOSITIVO */
+    .btn-disco-directo {
+        display: block;
+        width: 100%;
+        padding: 18px 0;
+        background: #FF5F1F;
+        color: white !important;
+        text-align: center;
+        text-decoration: none !important;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        font-size: 15px;
+        border-top: 2px solid #00ffc3;
+        transition: 0.3s ease;
+    }
+    .btn-disco-directo:active {
+        background: #00ffc3;
+        color: black !important;
+        transform: scale(0.98);
     }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DE DESCARGA SEGURA PARA ARCHIVOS GRANDES ---
-def descargar_a_la_app(url, nombre_archivo):
-    try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': 'https://myrient.erista.me/'
-        }
-        
-        with st.status(f"⚡ Procesando: {nombre_archivo}", expanded=True) as status:
-            r = requests.get(url, headers=headers, stream=True, timeout=300)
-            r.raise_for_status()
-            
-            total_size = int(r.headers.get('content-length', 0))
-            buffer = BytesIO()
-            descargado = 0
-            
-            progreso = st.progress(0)
-            # Chunks más grandes (2MB) para mayor velocidad en archivos pesados
-            for chunk in r.iter_content(chunk_size=2097152): 
-                if chunk:
-                    buffer.write(chunk)
-                    descargado += len(chunk)
-                    if total_size > 0:
-                        progreso.progress(min(descargado / total_size, 1.0))
-            
-            status.update(label="✅ POLVOS DE DIAMANTE LISTOS", state="complete")
-            
-            # Al terminar, mostramos el botón real de descarga del navegador
-            st.download_button(
-                label="💾 GUARDAR EN MI MÓVIL",
-                data=buffer.getvalue(),
-                file_name=nombre_archivo,
-                mime="application/octet-stream",
-                key=f"final_{nombre_archivo}"
-            )
-            st.balloons()
-    except Exception as e:
-        st.error(f"Error al procesar: {e}")
-
-# --- CONFIGURACIÓN DE PESTAÑAS Y MAPEO ---
+# --- LISTADO DE EMULADORES (NOMBRES SEGÚN CATÁLOGO) ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -123,9 +96,9 @@ def obtener_lista(url):
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
-# --- INTERFAZ ---
-letra_sel = st.select_slider('🎮 FILTRO:', options=["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-busq = st.text_input("🔍 BUSCAR JUEGO:", "").lower()
+# --- FILTROS Y BÚSQUEDA ---
+letra_sel = st.select_slider('🎮 FILTRO LETRA:', options=["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+busq = st.text_input("🔍 BUSCAR TÍTULO:", "").lower()
 
 tabs = st.tabs(tab_names)
 for i, tab in enumerate(tabs):
@@ -136,24 +109,25 @@ for i, tab in enumerate(tabs):
             filtrados = [x for x in filtrados if x and (x[0].isalpha() == False if letra_sel == "#" else x.upper().startswith(letra_sel))]
         
         cols = st.columns(2)
-        for idx, juego in enumerate(filtrados[:20]):
+        for idx, juego in enumerate(filtrados[:30]):
             with cols[idx % 2]:
                 nombre_visual = juego.split('(')[0].replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 consola_info = mapeo_consola_real.get(tab_names[i], "")
                 
                 # Imagen HD
-                query_img = urllib.parse.quote(f"{nombre_visual} {consola_info} cover art -ebay")
-                url_img = f"https://www.bing.com/th?q={query_img}&w=350&h=500&c=7&rs=1&p=0&pid=ImgDetMain"
+                busqueda_img = urllib.parse.quote(f"{nombre_visual} {consola_info} official game cover art -ebay")
+                url_img = f"https://www.bing.com/th?q={busqueda_img}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
+                
+                # EL BOTÓN DE DISCO DIRECTO
+                # Usamos el atributo 'download' para que el navegador del móvil lo guarde en disco directamente
+                enlace_directo = urls_base[i] + juego
                 
                 st.markdown(f'''
                     <div class="tarjeta-juego">
                         <div class="contenedor-img"><img src="{url_img}" class="img-neon"></div>
                         <span class="nombre-juego-gigante">{nombre_visual}</span>
+                        <a href="{enlace_directo}" download="{juego}" target="_self" class="btn-disco-directo">✨ POLVOS DE DIAMANTE ✨</a>
                     </div>
                 ''', unsafe_allow_html=True)
-                
-                # Al pulsar el botón, se ejecuta la descarga pesada
-                if st.button("✨ POLVOS DE DIAMANTE ✨", key=f"btn_{i}_{idx}"):
-                    descargar_a_la_app(urls_base[i] + juego, juego)
 
 st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | POLVOS DE DIAMANTE</div>', unsafe_allow_html=True)
