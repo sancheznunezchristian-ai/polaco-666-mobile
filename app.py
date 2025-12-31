@@ -25,27 +25,16 @@ st.markdown("""
         border: 2px solid #FF5F1F; margin-bottom: 20px;
         overflow: hidden; height: 500px;
         display: flex; flex-direction: column;
-        transition: all 0.3s ease-in-out;
-    }
-    .tarjeta-juego:hover {
-        transform: translateY(-10px);
-        border-color: #00ffc3;
-        box-shadow: 0px 10px 25px rgba(0, 255, 195, 0.4);
+        transition: 0.3s;
     }
 
     .contenedor-img {
         width: 100%; height: 280px;
         background: #000; display: flex;
         align-items: center; justify-content: center;
-        overflow: hidden;
     }
 
-    .img-neon { 
-        max-width: 100%; max-height: 100%; 
-        object-fit: contain; 
-        transition: transform 0.5s ease;
-    }
-    .tarjeta-juego:hover .img-neon { transform: scale(1.15); }
+    .img-neon { max-width: 100%; max-height: 100%; object-fit: contain; }
 
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
@@ -54,27 +43,15 @@ st.markdown("""
         text-transform: uppercase; background: #1a1a1a;
         display: flex; align-items: center; justify-content: center;
     }
-
-    /* BOTÓN QUE SIMULA CLIC LOCAL */
-    .btn-polvos {
-        display: block; width: 100%; padding: 20px 0;
-        background: #FF5F1F; color: white !important;
-        text-align: center; text-decoration: none !important;
-        font-family: 'Orbitron', sans-serif; font-weight: 900;
-        font-size: 16px; border: none; border-top: 2px solid #00ffc3;
-        cursor: pointer;
-    }
-    .btn-polvos:hover { background: #00ffc3; color: black !important; }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- SESSION PARA SCRAPING ---
-if 'session' not in st.session_state:
-    st.session_state.session = requests.Session()
-    st.session_state.session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    })
+# --- CONFIGURACIÓN DE CABECERAS (Referer Impersonation) ---
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Referer': 'https://myrient.erista.me/'
+}
 
 # --- LISTADO DE EMULADORES ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
@@ -101,10 +78,33 @@ mapeo_consola_real = {
 @st.cache_data(ttl=3600)
 def obtener_lista(url):
     try:
-        r = st.session_state.session.get(url, timeout=15)
+        r = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(r.text, 'html.parser')
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
+
+# --- FUNCIÓN DE DESCARGA INTERNA (TUNEL) ---
+def descargar_a_app(url_file):
+    # Streamlit descarga desde Myrient
+    r = requests.get(url_file, headers=headers, stream=True)
+    total_size = int(r.headers.get('content-length', 0))
+    
+    barra = st.progress(0)
+    texto = st.empty()
+    
+    buffer = b""
+    descargado = 0
+    
+    for chunk in r.iter_content(chunk_size=1024*1024): # Bloques de 1MB
+        if chunk:
+            buffer += chunk
+            descargado += len(chunk)
+            # Calculamos el % real
+            porcentaje = int((descargado / total_size) * 100)
+            barra.progress(porcentaje)
+            texto.write(f"📥 Capturando en la App: {porcentaje}%")
+            
+    return buffer
 
 # --- INTERFAZ ---
 letra_sel = st.select_slider('🎮 FILTRO:', options=["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
@@ -126,20 +126,26 @@ for i, tab in enumerate(tabs):
                 consola = mapeo_consola_real.get(tab_names[i], "")
                 url_img = f"https://www.bing.com/th?q={urllib.parse.quote(nombre_img + ' ' + consola + ' box art')}&w=400&h=550&c=7"
                 
-                enlace_directo = urls_base[i] + juego
-                
-                # TRUCO MAESTRO: referrerpolicy="no-referrer" + rel="noreferrer"
-                # Esto hace que el navegador jure que el usuario escribió la URL a mano
                 st.markdown(f'''
                     <div class="tarjeta-juego">
                         <div class="contenedor-img"><img src="{url_img}" class="img-neon"></div>
                         <span class="nombre-juego-gigante">{nombre_visual}</span>
-                        <a href="{enlace_directo}" 
-                           target="_blank" 
-                           rel="noreferrer" 
-                           referrerpolicy="no-referrer" 
-                           class="btn-polvos">✨ POLVOS DE DIAMANTE ✨</a>
                     </div>
                 ''', unsafe_allow_html=True)
+                
+                # BOTÓN QUE ACTIVA EL TÚNEL
+                if st.button(f"✨ POLVOS DE DIAMANTE ✨", key=f"btn_{i}_{idx}"):
+                    # Fase 1: La App descarga de Myrient a alta velocidad
+                    archivo_datos = descargar_a_app(urls_base[i] + juego)
+                    
+                    # Fase 2: La App te entrega el archivo a ti (Instantáneo)
+                    st.download_button(
+                        label="💾 GUARDAR EN DISPOSITIVO",
+                        data=archivo_datos,
+                        file_name=juego,
+                        mime="application/octet-stream",
+                        key=f"save_{i}_{idx}"
+                    )
+                    st.balloons()
 
-st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | BYPASS TOTAL</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | MODO TÚNEL ACTIVADO</div>', unsafe_allow_html=True)
