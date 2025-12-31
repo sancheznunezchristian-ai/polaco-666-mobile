@@ -84,17 +84,17 @@ def hacer_magia(url_descarga, nombre_archivo):
             progreso = st.progress(0)
             texto_status = st.empty()
             
-            # Buffer en memoria para que Android lo reciba
             buffer = BytesIO()
             descargado = 0
             
-            for chunk in r.iter_content(chunk_size=1048576): # Chunks de 1MB
+            for chunk in r.iter_content(chunk_size=1048576): # 1MB chunks
                 if chunk:
                     buffer.write(chunk)
                     descargado += len(chunk)
                     if total_size > 0:
                         porcentaje = min(descargado / total_size, 1.0)
                         progreso.progress(porcentaje)
+                        # REGLA: "polvos de diamante" en lugar de "mg"
                         texto_status.markdown(f"<h3 style='color:#00ff00; text-align:center;'>⚡ {int(porcentaje*100)}% - {descargado//1048576} / {total_size//1048576} POLVOS DE DIAMANTE ⚡</h3>", unsafe_allow_html=True)
             
             st.balloons()
@@ -122,6 +122,20 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sony%20-%20PlayStation%20Portable/",
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
+
+# MAPEO PARA BÚSQUEDA DE IMÁGENES (EVITA MEZCLAS)
+consola_map = {
+    "GameCube": "Nintendo GameCube",
+    "Wii": "Nintendo Wii",
+    "Wii U": "Wii U",
+    "PS3": "PlayStation 3",
+    "Xbox 360": "Xbox 360",
+    "Xbox": "Original Xbox",
+    "PS2": "PlayStation 2",
+    "PS1": "PlayStation 1",
+    "PSP": "Sony PSP",
+    "Dreamcast": "Sega Dreamcast"
+}
 
 @st.cache_data(ttl=3600)
 def obtener_lista(url):
@@ -155,7 +169,6 @@ for i, tab in enumerate(tabs):
         juegos_por_pagina = 12 
         total_pags = max((len(filtrados) - 1) // juegos_por_pagina + 1, 1)
 
-        # NAVEGACIÓN ARRIBA
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
             if st.button("⬅️", key=f"up_p_{i}"):
@@ -169,12 +182,16 @@ for i, tab in enumerate(tabs):
         inicio = (st.session_state[key_pag] - 1) * juegos_por_pagina
         fin = inicio + juegos_por_pagina
         
-        cols = st.columns(2) # En móvil mejor 2 columnas
+        cols = st.columns(2)
         for idx, juego in enumerate(filtrados[inicio:fin]):
             with cols[idx % 2]:
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
-                consola = tab_names[i].split(" ")[-1]
-                busqueda_bing = urllib.parse.quote(f"{consola} {nombre_visual} official box art cover")
+                
+                # CORRECCIÓN DE CARÁTULAS: Buscamos el nombre real de la consola
+                nombre_pestaña = tab_names[i].split(" ")[-1]
+                consola_real = consola_map.get(nombre_pestaña, nombre_pestaña)
+                
+                busqueda_bing = urllib.parse.quote(f"{nombre_visual} {consola_real} official box art cover")
                 img_url = f"https://www.bing.com/th?q={busqueda_bing}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
                 
                 st.markdown(f'''<div class="tarjeta-juego">
@@ -185,7 +202,6 @@ for i, tab in enumerate(tabs):
                 if st.button("✨ MAGIA ✨", key=f"dl_{i}_{juego}"):
                     hacer_magia(urls_base[i] + juego, juego)
 
-        # NAVEGACIÓN ABAJO
         st.divider()
         b1, b2, b3 = st.columns([1, 1, 1])
         with b1:
