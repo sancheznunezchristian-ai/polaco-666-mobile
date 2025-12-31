@@ -7,7 +7,7 @@ import re
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 (EFECTOS RECUPERADOS + ENLACE DIRECTO) ---
+# --- CSS: ESTILO POLACO 666 (EFECTOS + BOTÓN RÁPIDO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
@@ -19,12 +19,11 @@ st.markdown("""
         text-shadow: 2px 2px #000;
     }
 
-    /* TARJETA CON EFECTOS DE ZOOM Y LUZ NEÓN */
     .tarjeta-juego {
         background: #111;
         padding: 0px; border-radius: 12px;
         border: 2px solid #FF5F1F; margin-bottom: 20px;
-        overflow: hidden; height: 490px;
+        overflow: hidden; height: 500px;
         display: flex; flex-direction: column;
         transition: all 0.3s ease-in-out;
     }
@@ -46,38 +45,38 @@ st.markdown("""
         object-fit: contain; 
         transition: transform 0.5s ease;
     }
-    .tarjeta-juego:hover .img-neon {
-        transform: scale(1.15);
-    }
+    .tarjeta-juego:hover .img-neon { transform: scale(1.15); }
 
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
         font-size: 11px !important; color: #ffffff !important;
-        text-align: center; padding: 10px; height: 80px;
+        text-align: center; padding: 10px; height: 85px;
         text-transform: uppercase; background: #1a1a1a;
         display: flex; align-items: center; justify-content: center;
         border-top: 1px solid #333;
     }
 
-    /* BOTÓN DE DESCARGA DIRECTA (A DISCO) */
     .btn-polvos {
-        display: block; width: 100%; padding: 18px 0;
+        display: block; width: 100%; padding: 20px 0;
         background: #FF5F1F; color: white !important;
         text-align: center; text-decoration: none !important;
         font-family: 'Orbitron', sans-serif; font-weight: 900;
-        font-size: 15px; border-top: 2px solid #00ffc3;
-        transition: 0.3s ease;
+        font-size: 16px; border-top: 2px solid #00ffc3;
     }
-    .btn-polvos:hover { 
-        background: #00ffc3; 
-        color: black !important; 
-    }
-    .btn-polvos:active {
-        transform: scale(0.95);
-    }
+    .btn-polvos:hover { background: #00ffc3; color: black !important; }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
+
+# --- CONFIGURACIÓN DE CONEXIÓN RÁPIDA (SESSION PERSISTENCE) ---
+if 'session' not in st.session_state:
+    st.session_state.session = requests.Session()
+    # Cabeceras para saltar el límite de velocidad de los servidores
+    st.session_state.session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Referer': 'https://myrient.erista.me/',
+        'Accept-Encoding': 'identity'
+    })
 
 # --- LISTADO DE EMULADORES ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
@@ -104,7 +103,7 @@ mapeo_consola_real = {
 @st.cache_data(ttl=3600)
 def obtener_lista(url):
     try:
-        r = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
+        r = st.session_state.session.get(url, timeout=15)
         soup = BeautifulSoup(r.text, 'html.parser')
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
@@ -124,24 +123,22 @@ for i, tab in enumerate(tabs):
         cols = st.columns(2)
         for idx, juego in enumerate(filtrados[:30]):
             with cols[idx % 2]:
-                # Mantenemos la región en el nombre visual
-                nombre_con_region = re.sub(r'\.(zip|rvz|7z|iso|pkg|wux)$', '', juego, flags=re.I)
+                # Nombre con región para el usuario
+                nombre_visual = re.sub(r'\.(zip|rvz|7z|iso|pkg|wux)$', '', juego, flags=re.I)
                 
-                # Para la búsqueda de imagen usamos el nombre base
-                nombre_para_img = nombre_con_region.split('(')[0].strip()
-                consola_info = mapeo_consola_real.get(tab_names[i], "")
-                
-                query_img = urllib.parse.quote(f"{nombre_para_img} {consola_info} box art")
-                url_img = f"https://www.bing.com/th?q={query_img}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
+                # Nombre para buscar imagen
+                nombre_img = nombre_visual.split('(')[0].strip()
+                consola = mapeo_consola_real.get(tab_names[i], "")
+                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(nombre_img + ' ' + consola + ' box art')}&w=400&h=550&c=7"
                 
                 enlace_directo = urls_base[i] + juego
                 
                 st.markdown(f'''
                     <div class="tarjeta-juego">
                         <div class="contenedor-img"><img src="{url_img}" class="img-neon"></div>
-                        <span class="nombre-juego-gigante">{nombre_con_region}</span>
+                        <span class="nombre-juego-gigante">{nombre_visual}</span>
                         <a href="{enlace_directo}" target="_self" class="btn-polvos">✨ POLVOS DE DIAMANTE ✨</a>
                     </div>
                 ''', unsafe_allow_html=True)
 
-st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | POLVOS DE DIAMANTE DIRECTO</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | DESCARGA MÁXIMA VELOCIDAD</div>', unsafe_allow_html=True)
