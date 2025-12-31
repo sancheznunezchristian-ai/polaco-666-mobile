@@ -2,119 +2,77 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import urllib.parse
 import requests
-from io import BytesIO
 
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 (CALIDAD HD Y DISEÑO LIMPIO) ---
+# --- CSS: ESTILO POLACO 666 (OPTIMIZADO MÓVIL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
     .stApp { background: #08090b; color: #00ffc3; }
     
     .logo-666 {
-        font-family: 'Black Ops One', cursive; font-size: 55px;
-        text-align: center; margin-top: 10px; color: #FF5F1F; 
+        font-family: 'Black Ops One', cursive; font-size: 38px;
+        text-align: center; margin: 15px 0; color: #FF5F1F; 
         text-shadow: 2px 2px #000;
     }
 
     .tarjeta-juego {
         background: #111;
         padding: 0px; border-radius: 12px;
-        border: 2px solid #FF5F1F; margin-bottom: 25px;
-        transition: 0.3s;
+        border: 2px solid #FF5F1F; margin-bottom: 15px;
         overflow: hidden;
-        height: 520px;
+        height: 460px;
     }
-    .tarjeta-juego:hover { transform: scale(1.03); border-color: #00ffc3; box-shadow: 0px 0px 15px #00ffc3; }
 
     .contenedor-img {
-        width: 100%;
-        height: 400px;
-        background: #000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        width: 100%; height: 280px;
+        background: #000; display: flex;
+        align-items: center; justify-content: center;
     }
 
-    .img-neon { 
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-    }
+    .img-neon { max-width: 100%; max-height: 100%; object-fit: contain; }
 
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
-        font-size: 13px !important; color: #ffffff !important;
+        font-size: 11px !important; color: #ffffff !important;
         text-align: center; display: flex;
         align-items: center; justify-content: center;
-        padding: 10px; height: 70px;
-        text-transform: uppercase; line-height: 1.2;
+        padding: 8px; height: 60px;
+        text-transform: uppercase; line-height: 1.1;
         background: #1a1a1a;
     }
 
-    .pie-pagina {
-        text-align: center; font-family: 'Orbitron', sans-serif;
-        color: #FF5F1F; font-size: 14px; margin-top: 50px;
-        padding: 30px; border-top: 3px solid #FF5F1F;
-        background: #000;
-    }
-
-    .stButton > button {
-        width: 100%; font-size: 14px !important;
+    /* Botón tipo Polvos de Diamante */
+    .stDownloadButton > button {
+        width: 100% !important; height: 50px !important;
         background: #FF5F1F !important; color: white !important;
         border: none !important; font-weight: bold !important;
+        font-family: 'Orbitron', sans-serif !important;
+        border-radius: 0px !important;
+    }
+    .stDownloadButton > button:hover {
+        background: #00ffc3 !important; color: black !important;
     }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DESCARGA (ULTRA-STABLE & PERSISTENTE) ---
-def hacer_magia(url_descarga, nombre_archivo):
-    try:
-        # Headers para impersonar navegador y evitar bloqueos (Persistent Session)
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-            'Referer': 'https://myrient.erista.me/',
-            'Accept-Encoding': 'identity'
-        }
-        
-        session = requests.Session()
-        
-        with session.get(url_descarga, stream=True, headers=headers, timeout=60) as r:
-            r.raise_for_status()
-            total_size = int(r.headers.get('content-length', 0))
-            progreso = st.progress(0)
-            status = st.empty()
-            buffer = BytesIO()
-            descargado = 0
-            
-            # Chunks de 1MB para polvos de diamante estables
-            for chunk in r.iter_content(chunk_size=1048576):
-                if chunk:
-                    buffer.write(chunk)
-                    descargado += len(chunk)
-                    if total_size > 0:
-                        p = min(descargado / total_size, 1.0)
-                        progreso.progress(p)
-                        status.markdown(f"<p style='text-align:center; color:#00ffc3;'>⚡ {int(p*100)}% - POLVOS DE DIAMANTE ⚡</p>", unsafe_allow_html=True)
-            
-            st.success("✅ ¡DESCARGA LISTA!")
-            st.balloons()
-            
-            st.download_button(
-                label="💾 GUARDAR JUEGO EN MI PC",
-                data=buffer.getvalue(),
-                file_name=nombre_archivo,
-                mime="application/octet-stream"
-            )
-    except Exception as e: 
-        st.error(f"Error crítico en la descarga: {e}")
+# --- LÓGICA DE FLUJO CONTINUO (ANTI-CIERRE) ---
+def obtener_stream(url):
+    """Generador que descarga el archivo por trozos sin saturar la RAM"""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://myrient.erista.me/'
+    }
+    with requests.get(url, headers=headers, stream=True) as r:
+        r.raise_for_status()
+        for chunk in r.iter_content(chunk_size=8192 * 4): # Trozos pequeños constantes
+            yield chunk
 
-# --- PESTAÑAS (NOMBRES DE EMULADORES) ---
+# --- DATOS Y PESTAÑAS ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
-
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20Wii%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -128,101 +86,57 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# --- MAPEO PARA BÚSQUEDA HD (CONSOLA REAL) ---
 mapeo_consola_real = {
-    "🟣 Dolphin (GC)": "Nintendo GameCube",
-    "🔴 Dolphin (Wii)": "Nintendo Wii",
-    "🔴 Cemu": "Nintendo Wii U",
-    "🔵 RPCS3": "Sony PlayStation 3",
-    "🟢 Xenia": "Microsoft Xbox 360",
-    "🟢 Xemu": "Microsoft Xbox Original",
-    "🔵 PCSX2": "Sony PlayStation 2",
-    "🔵 DuckStation": "Sony PlayStation 1",
-    "🔵 PPSSPP": "Sony PSP",
+    "🟣 Dolphin (GC)": "Nintendo GameCube", "🔴 Dolphin (Wii)": "Nintendo Wii", "🔴 Cemu": "Nintendo Wii U",
+    "🔵 RPCS3": "Sony PlayStation 3", "🟢 Xenia": "Microsoft Xbox 360", "🟢 Xemu": "Microsoft Xbox Original",
+    "🔵 PCSX2": "Sony PlayStation 2", "🔵 DuckStation": "Sony PlayStation 1", "🔵 PPSSPP": "Sony PSP",
     "🟠 Dreamcast": "Sega Dreamcast"
 }
 
 @st.cache_data(ttl=3600)
 def obtener_lista(url):
     try:
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        r = requests.get(url, timeout=15, headers=headers)
+        r = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
         soup = BeautifulSoup(r.text, 'html.parser')
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
-abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-letra_sel = abc[st.select_slider('🎮 SELECCIONA LETRA:', options=range(len(abc)))]
-busq = st.text_input("🔍 BUSCAR TÍTULO ESPECÍFICO:", "").lower()
+# --- INTERFAZ ---
+letra_sel = st.select_slider('🎮 FILTRO:', options=["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+busq = st.text_input("🔍 BUSCAR:", "").lower()
 
 tabs = st.tabs(tab_names)
 for i, tab in enumerate(tabs):
     with tab:
-        nombre_tab = tab_names[i]
-        key_pag = f"pag_{i}"
-        if key_pag not in st.session_state: st.session_state[key_pag] = 1
-        
         items = obtener_lista(urls_base[i])
         filtrados = [x for x in items if busq in x.lower()]
         if letra_sel != "TODOS":
             filtrados = [x for x in filtrados if x and (x[0].isalpha() == False if letra_sel == "#" else x.upper().startswith(letra_sel))]
         
-        juegos_por_pag = 16
-        total_p = max((len(filtrados)-1)//juegos_por_pag + 1, 1)
-
-        c_nav = st.columns([1,2,1])
-        with c_nav[0]: 
-            if st.button("⬅️ ANTERIOR", key=f"ua_{i}"):
-                if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with c_nav[1]: st.markdown(f"<h4 style='text-align:center;'>{st.session_state[key_pag]} / {total_p}</h4>", unsafe_allow_html=True)
-        with c_nav[2]:
-            if st.button("SIGUIENTE ➡️", key=f"us_{i}"):
-                if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
-
-        st.divider()
-        inicio = (st.session_state[key_pag] - 1) * juegos_por_pag
-        
-        cols = st.columns(4)
-        for idx, juego in enumerate(filtrados[inicio : inicio + juegos_por_pag]):
-            with cols[idx % 4]:
+        cols = st.columns(2)
+        for idx, juego in enumerate(filtrados[:20]):
+            with cols[idx % 2]:
                 nombre_visual = juego.split('(')[0].replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
+                consola_info = mapeo_consola_real.get(tab_names[i], "")
                 
-                consola_query = mapeo_consola_real.get(nombre_tab, "")
-                busqueda_hd = f"{nombre_visual} {consola_query} official game cover art -ebay -wallapop -mercadolibre -amazon -vinted"
-                query_encoded = urllib.parse.quote(busqueda_hd)
-                
-                # Imagen HD (600x800)
-                url_img = f"https://www.bing.com/th?q={query_encoded}&w=600&h=800&c=7&rs=1&p=0&pid=ImgDetMain"
+                # Imagen HD
+                query_img = urllib.parse.quote(f"{nombre_visual} {consola_info} cover art -ebay")
+                url_img = f"https://www.bing.com/th?q={query_img}&w=350&h=500&c=7&rs=1&p=0&pid=ImgDetMain"
                 
                 st.markdown(f'''
                     <div class="tarjeta-juego">
-                        <div class="contenedor-img">
-                            <img src="{url_img}" class="img-neon">
-                        </div>
+                        <div class="contenedor-img"><img src="{url_img}" class="img-neon"></div>
                         <span class="nombre-juego-gigante">{nombre_visual}</span>
                     </div>
                 ''', unsafe_allow_html=True)
                 
-                if st.button("✨ MAGIA ✨", key=f"btn_{i}_{juego}"):
-                    hacer_magia(urls_base[i] + juego, juego)
+                # BOTÓN DIRECTO QUE PASA AL NAVEGADOR SIN CARGAR EN RAM
+                st.download_button(
+                    label="✨ POLVOS DE DIAMANTE ✨",
+                    data=obtener_stream(urls_base[i] + juego),
+                    file_name=juego,
+                    mime="application/octet-stream",
+                    key=f"dl_{i}_{idx}"
+                )
 
-        st.divider()
-        c_nav_b = st.columns([1,2,1])
-        with c_nav_b[0]:
-            if st.button("⬅️ VOLVER", key=f"ba_{i}"):
-                if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with c_nav_b[1]: st.markdown(f"<h3 style='text-align:center;'>PÁGINA {st.session_state[key_pag]}</h3>", unsafe_allow_html=True)
-        with c_nav_b[2]:
-            if st.button("AVANZAR ➡️", key=f"bs_{i}"):
-                if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
-
-# --- PIE DE PÁGINA ---
-st.markdown("""
-<div class="pie-pagina">
-    <p>POLACO 666 | MULTI-REGIÓN | POLVOS DE DIAMANTE</p>
-    <p style="color: #00ffc3; font-size: 14px;">
-        Esta aplicación es propiedad de <b>Polaco 666</b> y es totalmente <b>sin ánimos de lucro</b>.<br>
-        Dedicada a la <b>retroemulación</b>, la comunidad y la <b>conservación</b> de los mismos.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | POLVOS DE DIAMANTE</div>', unsafe_allow_html=True)
