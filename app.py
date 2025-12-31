@@ -18,8 +18,8 @@ st.markdown("""
         animation: vibracion 0.3s linear infinite;
     }
     .tarjeta-juego {
-        background: rgba(255, 255, 255, 0.02);
-        padding: 15px; border-radius: 15px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px; border-radius: 15px;
         border: 1px solid #222; margin-bottom: 25px;
         text-align: center;
     }
@@ -27,14 +27,15 @@ st.markdown("""
         width: 100%; aspect-ratio: 3/4;
         border: 2px solid #FF5F1F; border-radius: 10px;
         overflow: hidden; background: #000;
+        display: flex; align-items: center; justify-content: center;
     }
-    .img-neon { width: 100%; height: 100%; object-fit: contain; background: #000; }
+    .img-neon { width: 100%; height: 100%; object-fit: cover; }
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
-        font-size: 16px !important; color: #ffffff !important;
-        text-shadow: 0 0 8px #FF5F1F !important;
-        min-height: 50px; display: flex; align-items: center; justify-content: center;
-        text-transform: uppercase;
+        font-size: 15px !important; color: #ffffff !important;
+        text-shadow: 0 0 5px #FF5F1F !important;
+        min-height: 45px; display: flex; align-items: center; justify-content: center;
+        text-transform: uppercase; padding-top: 5px;
     }
     .pie-pagina {
         text-align: center; font-family: 'Orbitron', sans-serif;
@@ -47,7 +48,7 @@ st.markdown("""
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DESCARGA (CON POLVOS DE DIAMANTE) ---
+# --- FUNCIÓN DESCARGA (POLVOS DE DIAMANTE) ---
 def hacer_magia(url_descarga, nombre_archivo):
     try:
         headers = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://myrient.erista.me/'}
@@ -71,7 +72,7 @@ def hacer_magia(url_descarga, nombre_archivo):
     except Exception as e:
         st.error(f"Error: {e}")
 
-# --- PESTAÑAS Y MAPEO DE CONSOLAS ---
+# --- PESTAÑAS Y MAPEO ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -86,18 +87,18 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# MAPEO PARA BÚSQUEDA DE CARÁTULAS ORIGINALES
+# MAPEO DE BÚSQUEDA EN SITIOS RETRO (MobyGames, LaunchBox)
 consola_real_map = {
-    "Dolphin (GC)": "GameCube original cover scan",
-    "Dolphin (Wii)": "Nintendo Wii original cover scan",
-    "Cemu": "Wii U ONLY original cover scan",
-    "RPCS3": "PS3 original cover scan",
-    "Xenia": "Xbox 360 original cover scan",
-    "Xemu": "Xbox original cover scan",
-    "PCSX2": "PS2 original cover scan",
-    "DuckStation": "PS1 original cover scan",
-    "PPSSPP": "PSP original cover scan",
-    "Dreamcast": "Dreamcast original cover scan"
+    "Dolphin (GC)": "site:mobygames.com GameCube cover art",
+    "Dolphin (Wii)": "site:mobygames.com Wii cover art scan",
+    "Cemu": "site:launchbox-app.com Wii U front cover",
+    "RPCS3": "site:steamgriddb.com PS3 cover",
+    "Xenia": "site:mobygames.com Xbox 360 front cover",
+    "Xemu": "site:launchbox-app.com Xbox Original front cover",
+    "PCSX2": "site:mobygames.com PS2 front cover",
+    "DuckStation": "site:mobygames.com PS1 front cover scan",
+    "PPSSPP": "site:launchbox-app.com PSP cover",
+    "Dreamcast": "site:mobygames.com Dreamcast front cover"
 }
 
 @st.cache_data(ttl=3600)
@@ -108,10 +109,8 @@ def obtener_lista(url):
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
-# FILTROS
 abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-idx_abc = st.select_slider('🎮 FILTRAR POR LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
-letra_sel = abc[idx_abc]
+letra_sel = abc[st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])]
 busq = st.text_input("🔍 BUSCAR JUEGO:", "").lower()
 
 tabs = st.tabs(tab_names)
@@ -130,11 +129,11 @@ for i, tab in enumerate(tabs):
         # --- NAVEGACIÓN ARRIBA ---
         c1, c2, c3 = st.columns([1,1,1])
         with c1:
-            if st.button("⬅️ ANTERIOR", key=f"u_prev_{i}"):
+            if st.button("⬅️ ANTERIOR", key=f"up_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with c2: st.markdown(f"<h3 style='text-align:center;'>{st.session_state[key_pag]} / {total_p}</h3>", unsafe_allow_html=True)
+        with c2: st.markdown(f"<h4 style='text-align:center;'>{st.session_state[key_pag]} / {total_p}</h4>", unsafe_allow_html=True)
         with c3:
-            if st.button("SIGUIENTE ➡️", key=f"u_next_{i}"):
+            if st.button("SIGUIENTE ➡️", key=f"un_{i}"):
                 if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
 
         st.divider()
@@ -145,9 +144,10 @@ for i, tab in enumerate(tabs):
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 emulador_puro = tab_names[i].split(" ", 1)[-1]
                 termino = consola_real_map.get(emulador_puro, emulador_puro)
-                # Búsqueda de Scan Original
-                busqueda_final = f"{nombre_visual} {termino}"
-                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(busqueda_final)}&w=500&h=700&c=7&rs=1&p=0&pid=ImgDetMain"
+                
+                # Búsqueda PRO: Forzamos sitios de carátulas para evitar fotos de tiendas
+                busqueda_final = f"{nombre_visual} {termino} clean scan"
+                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(busqueda_final)}&w=600&h=800&c=7&rs=1&p=0&pid=ImgDetMain"
                 
                 st.markdown(f'''<div class="tarjeta-juego">
                     <div class="contenedor-caratula"><img src="{url_img}" class="img-neon"></div>
@@ -159,11 +159,11 @@ for i, tab in enumerate(tabs):
         st.divider()
         b1, b2, b3 = st.columns([1,1,1])
         with b1:
-            if st.button("⬅️ PÁGINA ANTERIOR", key=f"d_prev_{i}"):
+            if st.button("⬅️ PÁGINA ANTERIOR", key=f"dp_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
         with b2: st.markdown(f"<h3 style='text-align:center;'>PÁG {st.session_state[key_pag]}</h3>", unsafe_allow_html=True)
         with b3:
-            if st.button("PÁGINA SIGUIENTE ➡️", key=f"d_next_{i}"):
+            if st.button("PÁGINA SIGUIENTE ➡️", key=f"dn_{i}"):
                 if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
 
 # --- PIE DE PÁGINA: DERECHOS ---
