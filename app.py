@@ -87,14 +87,14 @@ def hacer_magia(url_descarga, nombre_archivo):
             buffer = BytesIO()
             descargado = 0
             
-            for chunk in r.iter_content(chunk_size=1048576): # 1MB chunks
+            for chunk in r.iter_content(chunk_size=1048576): # 1MB
                 if chunk:
                     buffer.write(chunk)
                     descargado += len(chunk)
                     if total_size > 0:
                         porcentaje = min(descargado / total_size, 1.0)
                         progreso.progress(porcentaje)
-                        # REGLA: "polvos de diamante" en lugar de "mg"
+                        # PERSONALIZACIÓN: "polvos de diamante"
                         texto_status.markdown(f"<h3 style='color:#00ff00; text-align:center;'>⚡ {int(porcentaje*100)}% - {descargado//1048576} / {total_size//1048576} POLVOS DE DIAMANTE ⚡</h3>", unsafe_allow_html=True)
             
             st.balloons()
@@ -108,8 +108,8 @@ def hacer_magia(url_descarga, nombre_archivo):
     except Exception as e:
         st.error(f"Fallo de conexión: {e}")
 
-# --- LISTAS Y URLs ---
-tab_names = ["🟣 GameCube", "🔴 Wii", "🔴 Wii U", "🔵 PS3", "🟢 Xbox 360", "🟢 Xbox", "🔵 PS2", "🔵 PS1", "🔵 PSP", "🟠 Dreamcast"]
+# --- LISTAS Y URLs (ORDENADAS POR EMULADOR) ---
+tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20Wii%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -123,17 +123,17 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# MAPEO PARA BÚSQUEDA DE IMÁGENES (EVITA MEZCLAS)
+# --- TRADUCTOR DE EMULADOR A CONSOLA PARA BING ---
 consola_map = {
-    "GameCube": "Nintendo GameCube",
-    "Wii": "Nintendo Wii",
-    "Wii U": "Wii U",
-    "PS3": "PlayStation 3",
-    "Xbox 360": "Xbox 360",
-    "Xbox": "Original Xbox",
-    "PS2": "PlayStation 2",
-    "PS1": "PlayStation 1",
-    "PSP": "Sony PSP",
+    "Dolphin (GC)": "Nintendo GameCube",
+    "Dolphin (Wii)": "Nintendo Wii",
+    "Cemu": "Nintendo Wii U",
+    "RPCS3": "Sony PlayStation 3 PS3",
+    "Xenia": "Microsoft Xbox 360",
+    "Xemu": "Original Xbox Classic",
+    "PCSX2": "Sony PlayStation 2 PS2",
+    "DuckStation": "Sony PlayStation 1 PS1",
+    "PPSSPP": "Sony PSP",
     "Dreamcast": "Sega Dreamcast"
 }
 
@@ -152,9 +152,9 @@ def reset_pagina():
 abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 idx_abc = st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x], on_change=reset_pagina)
 letra_sel = abc[idx_abc]
-busq = st.text_input("🔍 BUSCAR JUEGO (EUROPE, ASIA, USA...):", "", on_change=reset_pagina).lower()
+busq = st.text_input("🔍 BUSCAR JUEGO:", "", on_change=reset_pagina).lower()
 
-# --- TABS CON NAVEGACIÓN ---
+# --- TABS ---
 tabs = st.tabs(tab_names)
 for i, tab in enumerate(tabs):
     with tab:
@@ -187,11 +187,12 @@ for i, tab in enumerate(tabs):
             with cols[idx % 2]:
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 
-                # CORRECCIÓN DE CARÁTULAS: Buscamos el nombre real de la consola
-                nombre_pestaña = tab_names[i].split(" ")[-1]
-                consola_real = consola_map.get(nombre_pestaña, nombre_pestaña)
+                # --- MEJORA DE IMÁGENES POR EMULADOR ---
+                nombre_emulador = tab_names[i].split(" ")[-1]
+                consola_real = consola_map.get(nombre_emulador, nombre_emulador)
                 
-                busqueda_bing = urllib.parse.quote(f"{nombre_visual} {consola_real} official box art cover")
+                # Forzamos a Bing a buscar la carátula oficial de la consola real
+                busqueda_bing = urllib.parse.quote(f"{nombre_visual} {consola_real} official box art")
                 img_url = f"https://www.bing.com/th?q={busqueda_bing}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
                 
                 st.markdown(f'''<div class="tarjeta-juego">
@@ -201,15 +202,5 @@ for i, tab in enumerate(tabs):
                 
                 if st.button("✨ MAGIA ✨", key=f"dl_{i}_{juego}"):
                     hacer_magia(urls_base[i] + juego, juego)
-
-        st.divider()
-        b1, b2, b3 = st.columns([1, 1, 1])
-        with b1:
-            if st.button("⬅️ ", key=f"dw_p_{i}"):
-                if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with b2: st.write(f"Pág {st.session_state[key_pag]}/{total_pags}")
-        with b3:
-            if st.button("➡️ ", key=f"dw_n_{i}"):
-                if st.session_state[key_pag] < total_pags: st.session_state[key_pag] += 1; st.rerun()
 
 st.markdown("""<div style='text-align:center; padding:20px; color:#FF5F1F;'>POLACO 666 | POLVOS DE DIAMANTE</div>""", unsafe_allow_html=True)
