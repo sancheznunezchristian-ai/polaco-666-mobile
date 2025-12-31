@@ -8,7 +8,7 @@ from io import BytesIO
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 (IDÉNTICO AL EXE) ---
+# --- CSS: ESTILO POLACO 666 ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
@@ -60,6 +60,14 @@ st.markdown("""
         font-size: 16px !important;
     }
 
+    .pie-pagina {
+        text-align: center; font-family: 'Orbitron', sans-serif;
+        color: #FF5F1F; font-size: 12px; margin-top: 40px;
+        padding: 30px; border-top: 2px solid #222;
+        background: rgba(0,0,0,0.8); letter-spacing: 1px;
+        line-height: 1.6;
+    }
+
     @keyframes vibracion {
         0% { transform: translate(0); }
         50% { transform: translate(-1px, 1px); }
@@ -69,13 +77,10 @@ st.markdown("""
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN DESCARGA (SIN TKINTER, PARA WEB) ---
+# --- FUNCIÓN DESCARGA ---
 def hacer_magia(url_descarga, nombre_archivo):
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Referer': 'https://myrient.erista.me/'
-        }
+        headers = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://myrient.erista.me/'}
         with requests.get(url_descarga, stream=True, timeout=None, headers=headers) as r:
             r.raise_for_status()
             total_size = int(r.headers.get('content-length', 0))
@@ -90,15 +95,14 @@ def hacer_magia(url_descarga, nombre_archivo):
                     if total_size > 0:
                         porcentaje = min(descargado / total_size, 1.0)
                         progreso.progress(porcentaje)
-                        # AQUÍ TIENES TUS POLVOS DE DIAMANTE
                         texto_status.markdown(f"<h3 style='color:#00ff00; text-align:center;'>⚡ {int(porcentaje*100)}% - {descargado//1048576} / {total_size//1048576} POLVOS DE DIAMANTE ⚡</h3>", unsafe_allow_html=True)
             
             st.balloons()
-            st.download_button(label="💾 GUARDAR JUEGO", data=buffer.getvalue(), file_name=nombre_archivo)
+            st.download_button(label="💾 GUARDAR JUEGO EN EL MÓVIL", data=buffer.getvalue(), file_name=nombre_archivo)
     except Exception as e:
         st.error(f"Error: {e}")
 
-# --- CONFIGURACIÓN DE PESTAÑAS (NOMBRES DE EMULADORES) ---
+# --- PESTAÑAS (EMULADORES) ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -113,12 +117,11 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# --- TRADUCTOR CLAVE PARA QUE BING NO SE MEZCLE ---
-# Este diccionario traduce el nombre del emulador de la pestaña a la consola real para Bing
+# TRADUCTOR PARA BING (CON FILTRO ANTI-MEZCLA)
 consola_real_map = {
     "Dolphin (GC)": "Nintendo GameCube",
-    "Dolphin (Wii)": "Nintendo Wii",
-    "Cemu": "Nintendo Wii U",
+    "Dolphin (Wii)": "Nintendo Wii (Original White Box Art)",
+    "Cemu": "Nintendo Wii U (ONLY Blue Box Art)",
     "RPCS3": "Sony PlayStation 3 PS3",
     "Xenia": "Microsoft Xbox 360",
     "Xemu": "Original Xbox Classic",
@@ -136,9 +139,9 @@ def obtener_lista(url):
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
-# --- FILTROS Y NAVEGACIÓN ---
+# --- FILTROS ---
 abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-idx_abc = st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
+idx_abc = st.select_slider('🎮 FILTRAR POR LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
 letra_sel = abc[idx_abc]
 busq = st.text_input("🔍 BUSCAR JUEGO:", "").lower()
 
@@ -149,40 +152,34 @@ for i, tab in enumerate(tabs):
         if key_pag not in st.session_state: st.session_state[key_pag] = 1
         items = obtener_lista(urls_base[i])
         filtrados = [x for x in items if busq in x.lower()]
-        
         if letra_sel != "TODOS":
             filtrados = [x for x in filtrados if x and (x[0].isalpha() == False if letra_sel == "#" else x.upper().startswith(letra_sel))]
         
         juegos_por_pagina = 12
         total_pags = max((len(filtrados) - 1) // juegos_por_pagina + 1, 1)
 
-        # Controles de página
+        # BOTONES ARRIBA
         c1, c2, c3 = st.columns([1, 1, 1])
         with c1:
-            if st.button("⬅️", key=f"p_{i}"):
+            if st.button("⬅️ ANTERIOR", key=f"up_p_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with c2: st.write(f"Pág {st.session_state[key_pag]}/{total_pags}")
+        with c2: st.markdown(f"<h4 style='text-align:center;'>{st.session_state[key_pag]} / {total_pags}</h4>", unsafe_allow_html=True)
         with c3:
-            if st.button("➡️", key=f"n_{i}"):
+            if st.button("SIGUIENTE ➡️", key=f"up_n_{i}"):
                 if st.session_state[key_pag] < total_pags: st.session_state[key_pag] += 1; st.rerun()
 
         st.divider()
         inicio = (st.session_state[key_pag] - 1) * juegos_por_pagina
-        fin = inicio + juegos_por_pagina
         cols = st.columns(2)
         
-        for idx, juego in enumerate(filtrados[inicio:fin]):
+        for idx, juego in enumerate(filtrados[inicio : inicio + juegos_por_pagina]):
             with cols[idx % 2]:
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 
-                # --- LA SOLUCIÓN MAESTRA ---
-                # 1. Cogemos el nombre del emulador de la pestaña (quitando el icono)
                 emulador_puro = tab_names[i].split(" ", 1)[-1]
-                # 2. Lo traducimos a consola real (ej: Cemu -> Nintendo Wii U)
                 consola_bing = consola_real_map.get(emulador_puro, emulador_puro)
                 
-                # 3. Buscamos: Consola + Juego + "box art" (esta combinación no falla)
-                busqueda_bing = urllib.parse.quote(f"{consola_bing} {nombre_visual} official box art cover")
+                busqueda_bing = urllib.parse.quote(f"{nombre_visual} {consola_bing} official box art")
                 img_url = f"https://www.bing.com/th?q={busqueda_bing}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
                 
                 st.markdown(f'''<div class="tarjeta-juego">
@@ -193,4 +190,22 @@ for i, tab in enumerate(tabs):
                 if st.button("✨ MAGIA ✨", key=f"dl_{i}_{juego}"):
                     hacer_magia(urls_base[i] + juego, juego)
 
-st.markdown("""<div style='text-align:center; padding:40px; color:#FF5F1F; font-family:Orbitron;'>POLACO 666 | POLVOS DE DIAMANTE</div>""", unsafe_allow_html=True)
+        # BOTONES ABAJO
+        st.divider()
+        b1, b2, b3 = st.columns([1, 1, 1])
+        with b1:
+            if st.button("⬅️ ANTERIOR ", key=f"dw_p_{i}"):
+                if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
+        with b2: st.markdown(f"<h4 style='text-align:center;'>PÁGINA {st.session_state[key_pag]}</h4>", unsafe_allow_html=True)
+        with b3:
+            if st.button("SIGUIENTE ➡️ ", key=f"dw_n_{i}"):
+                if st.session_state[key_pag] < total_pags: st.session_state[key_pag] += 1; st.rerun()
+
+# --- PIE DE PÁGINA ACTUALIZADO CON TUS DERECHOS ---
+st.markdown("""
+<div class="pie-pagina">
+    <p>POLACO 666 | MULTI-REGIÓN | POLVOS DE DIAMANTE</p>
+    <p style="color: #00ffc3; font-size: 10px;">Esta aplicación es de <b>Polaco 666</b> y es sin ánimos de lucro.</p>
+    <p style="color: #00ffc3; font-size: 10px;">Creada para la retroemulación, la comunidad y la conservación de los mismos.</p>
+</div>
+""", unsafe_allow_html=True)
