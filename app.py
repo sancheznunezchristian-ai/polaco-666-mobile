@@ -2,19 +2,20 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import urllib.parse
 import requests
+from io import BytesIO
 
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 (OPTIMIZADO MÓVIL) ---
+# --- CSS: ESTILO POLACO 666 ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
     .stApp { background: #08090b; color: #00ffc3; }
     
     .logo-666 {
-        font-family: 'Black Ops One', cursive; font-size: 38px;
-        text-align: center; margin: 15px 0; color: #FF5F1F; 
+        font-family: 'Black Ops One', cursive; font-size: 35px;
+        text-align: center; margin: 10px 0; color: #FF5F1F; 
         text-shadow: 2px 2px #000;
     }
 
@@ -22,8 +23,7 @@ st.markdown("""
         background: #111;
         padding: 0px; border-radius: 12px;
         border: 2px solid #FF5F1F; margin-bottom: 15px;
-        overflow: hidden;
-        height: 460px;
+        overflow: hidden; height: 460px;
     }
 
     .contenedor-img {
@@ -44,34 +44,56 @@ st.markdown("""
         background: #1a1a1a;
     }
 
-    /* Botón tipo Polvos de Diamante */
-    .stDownloadButton > button {
+    .stButton > button {
         width: 100% !important; height: 50px !important;
         background: #FF5F1F !important; color: white !important;
         border: none !important; font-weight: bold !important;
         font-family: 'Orbitron', sans-serif !important;
-        border-radius: 0px !important;
-    }
-    .stDownloadButton > button:hover {
-        background: #00ffc3 !important; color: black !important;
     }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE FLUJO CONTINUO (ANTI-CIERRE) ---
-def obtener_stream(url):
-    """Generador que descarga el archivo por trozos sin saturar la RAM"""
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://myrient.erista.me/'
-    }
-    with requests.get(url, headers=headers, stream=True) as r:
-        r.raise_for_status()
-        for chunk in r.iter_content(chunk_size=8192 * 4): # Trozos pequeños constantes
-            yield chunk
+# --- FUNCIÓN DE DESCARGA SEGURA PARA ARCHIVOS GRANDES ---
+def descargar_a_la_app(url, nombre_archivo):
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://myrient.erista.me/'
+        }
+        
+        with st.status(f"⚡ Procesando: {nombre_archivo}", expanded=True) as status:
+            r = requests.get(url, headers=headers, stream=True, timeout=300)
+            r.raise_for_status()
+            
+            total_size = int(r.headers.get('content-length', 0))
+            buffer = BytesIO()
+            descargado = 0
+            
+            progreso = st.progress(0)
+            # Chunks más grandes (2MB) para mayor velocidad en archivos pesados
+            for chunk in r.iter_content(chunk_size=2097152): 
+                if chunk:
+                    buffer.write(chunk)
+                    descargado += len(chunk)
+                    if total_size > 0:
+                        progreso.progress(min(descargado / total_size, 1.0))
+            
+            status.update(label="✅ POLVOS DE DIAMANTE LISTOS", state="complete")
+            
+            # Al terminar, mostramos el botón real de descarga del navegador
+            st.download_button(
+                label="💾 GUARDAR EN MI MÓVIL",
+                data=buffer.getvalue(),
+                file_name=nombre_archivo,
+                mime="application/octet-stream",
+                key=f"final_{nombre_archivo}"
+            )
+            st.balloons()
+    except Exception as e:
+        st.error(f"Error al procesar: {e}")
 
-# --- DATOS Y PESTAÑAS ---
+# --- CONFIGURACIÓN DE PESTAÑAS Y MAPEO ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -103,7 +125,7 @@ def obtener_lista(url):
 
 # --- INTERFAZ ---
 letra_sel = st.select_slider('🎮 FILTRO:', options=["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-busq = st.text_input("🔍 BUSCAR:", "").lower()
+busq = st.text_input("🔍 BUSCAR JUEGO:", "").lower()
 
 tabs = st.tabs(tab_names)
 for i, tab in enumerate(tabs):
@@ -130,13 +152,8 @@ for i, tab in enumerate(tabs):
                     </div>
                 ''', unsafe_allow_html=True)
                 
-                # BOTÓN DIRECTO QUE PASA AL NAVEGADOR SIN CARGAR EN RAM
-                st.download_button(
-                    label="✨ POLVOS DE DIAMANTE ✨",
-                    data=obtener_stream(urls_base[i] + juego),
-                    file_name=juego,
-                    mime="application/octet-stream",
-                    key=f"dl_{i}_{idx}"
-                )
+                # Al pulsar el botón, se ejecuta la descarga pesada
+                if st.button("✨ POLVOS DE DIAMANTE ✨", key=f"btn_{i}_{idx}"):
+                    descargar_a_la_app(urls_base[i] + juego, juego)
 
 st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | POLVOS DE DIAMANTE</div>', unsafe_allow_html=True)
