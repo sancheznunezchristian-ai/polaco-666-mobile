@@ -2,11 +2,12 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import urllib.parse
 import requests
+import re
 
 # --- CONFIGURACIÓN POLACO 666 ---
 st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 
-# --- CSS: ESTILO POLACO 666 OPTIMIZADO PARA ESCRITURA EN DISCO MÓVIL ---
+# --- CSS: ESTILO POLACO 666 CON EFECTOS RECUPERADOS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
@@ -18,55 +19,59 @@ st.markdown("""
         text-shadow: 2px 2px #000;
     }
 
+    /* TARJETA CON EFECTO ZOOM Y LUZ NEÓN */
     .tarjeta-juego {
         background: #111;
         padding: 0px; border-radius: 12px;
         border: 2px solid #FF5F1F; margin-bottom: 20px;
-        overflow: hidden; height: 460px;
+        overflow: hidden; height: 490px;
         display: flex; flex-direction: column;
+        transition: all 0.3s ease-in-out;
+    }
+    .tarjeta-juego:hover {
+        transform: translateY(-10px);
+        border-color: #00ffc3;
+        box-shadow: 0px 10px 25px rgba(0, 255, 195, 0.4);
     }
 
     .contenedor-img {
         width: 100%; height: 280px;
         background: #000; display: flex;
         align-items: center; justify-content: center;
+        overflow: hidden;
     }
 
-    .img-neon { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .img-neon { 
+        max-width: 100%; max-height: 100%; 
+        object-fit: contain; 
+        transition: transform 0.5s ease;
+    }
+    .tarjeta-juego:hover .img-neon {
+        transform: scale(1.15);
+    }
 
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
         font-size: 11px !important; color: #ffffff !important;
-        text-align: center; padding: 10px; height: 60px;
+        text-align: center; padding: 10px; height: 80px;
         text-transform: uppercase; background: #1a1a1a;
         display: flex; align-items: center; justify-content: center;
     }
 
-    /* BOTÓN DE DESCARGA DIRECTA AL DISCO DEL DISPOSITIVO */
     .btn-disco-directo {
-        display: block;
-        width: 100%;
-        padding: 18px 0;
-        background: #FF5F1F;
-        color: white !important;
-        text-align: center;
-        text-decoration: none !important;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 900;
-        font-size: 15px;
-        border-top: 2px solid #00ffc3;
+        display: block; width: 100%; padding: 18px 0;
+        background: #FF5F1F; color: white !important;
+        text-align: center; text-decoration: none !important;
+        font-family: 'Orbitron', sans-serif; font-weight: 900;
+        font-size: 15px; border-top: 2px solid #00ffc3;
         transition: 0.3s ease;
     }
-    .btn-disco-directo:active {
-        background: #00ffc3;
-        color: black !important;
-        transform: scale(0.98);
-    }
+    .btn-disco-directo:hover { background: #00ffc3; color: black !important; }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
 
-# --- LISTADO DE EMULADORES (NOMBRES SEGÚN CATÁLOGO) ---
+# --- LISTADO DE EMULADORES ---
 tab_names = ["🟣 Dolphin (GC)", "🔴 Dolphin (Wii)", "🔴 Cemu", "🔵 RPCS3", "🟢 Xenia", "🟢 Xemu", "🔵 PCSX2", "🔵 DuckStation", "🔵 PPSSPP", "🟠 Dreamcast"]
 urls_base = [
     "https://myrient.erista.me/files/Redump/Nintendo%20-%20GameCube%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/",
@@ -96,7 +101,25 @@ def obtener_lista(url):
         return [urllib.parse.unquote(a['href']) for a in soup.find_all('a') if a.get('href', '').lower().endswith(('.zip', '.iso', '.7z', '.pkg', '.wux', '.rvz'))]
     except: return []
 
-# --- FILTROS Y BÚSQUEDA ---
+# --- LÓGICA DE DESCARGA CON BARRA SINCRONIZADA ---
+def descargar_con_progreso(url, nombre):
+    response = requests.get(url, stream=True)
+    total_size = int(response.headers.get('content-length', 0))
+    barra = st.progress(0)
+    estado = st.empty()
+    buffer = b""
+    descargado = 0
+    
+    for chunk in response.iter_content(chunk_size=1024*1024):
+        if chunk:
+            buffer += chunk
+            descargado += len(chunk)
+            porcentaje = int((descargado / total_size) * 100)
+            barra.progress(porcentaje)
+            estado.write(f"📥 Cargando: {porcentaje}%")
+    return buffer
+
+# --- INTERFAZ ---
 letra_sel = st.select_slider('🎮 FILTRO LETRA:', options=["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 busq = st.text_input("🔍 BUSCAR TÍTULO:", "").lower()
 
@@ -109,25 +132,35 @@ for i, tab in enumerate(tabs):
             filtrados = [x for x in filtrados if x and (x[0].isalpha() == False if letra_sel == "#" else x.upper().startswith(letra_sel))]
         
         cols = st.columns(2)
-        for idx, juego in enumerate(filtrados[:30]):
+        for idx, juego in enumerate(filtrados[:20]):
             with cols[idx % 2]:
-                nombre_visual = juego.split('(')[0].replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
+                # MANTENEMOS LA REGIÓN EN EL NOMBRE (Captura todo hasta el final antes de la extensión)
+                nombre_limpio = re.sub(r'\.(zip|rvz|7z|iso|pkg|wux)$', '', juego, flags=re.I)
+                
+                # Para la búsqueda de imagen usamos el nombre sin paréntesis para que sea más exacta
+                nombre_para_img = nombre_limpio.split('(')[0].strip()
                 consola_info = mapeo_consola_real.get(tab_names[i], "")
                 
-                # Imagen HD
-                busqueda_img = urllib.parse.quote(f"{nombre_visual} {consola_info} official game cover art -ebay")
+                busqueda_img = urllib.parse.quote(f"{nombre_para_img} {consola_info} box art")
                 url_img = f"https://www.bing.com/th?q={busqueda_img}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
-                
-                # EL BOTÓN DE DISCO DIRECTO
-                # Usamos el atributo 'download' para que el navegador del móvil lo guarde en disco directamente
-                enlace_directo = urls_base[i] + juego
                 
                 st.markdown(f'''
                     <div class="tarjeta-juego">
                         <div class="contenedor-img"><img src="{url_img}" class="img-neon"></div>
-                        <span class="nombre-juego-gigante">{nombre_visual}</span>
-                        <a href="{enlace_directo}" download="{juego}" target="_self" class="btn-disco-directo">✨ POLVOS DE DIAMANTE ✨</a>
+                        <span class="nombre-juego-gigante">{nombre_limpio}</span>
                     </div>
                 ''', unsafe_allow_html=True)
+                
+                # PROCESO DE "POLVOS DE DIAMANTE" SINCRONIZADO
+                if st.button(f"✨ POLVOS DE DIAMANTE ✨", key=f"btn_{i}_{idx}"):
+                    archivo_bytes = descargar_con_progreso(urls_base[i] + juego, juego)
+                    st.download_button(
+                        label="💾 GUARDAR EN DISPOSITIVO",
+                        data=archivo_bytes,
+                        file_name=juego,
+                        mime="application/octet-stream",
+                        key=f"dl_{i}_{idx}"
+                    )
+                    st.balloons()
 
-st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | POLVOS DE DIAMANTE</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; color:#FF5F1F; padding:30px;">POLACO 666 | REGIÓN & DISCO</div>', unsafe_allow_html=True)
