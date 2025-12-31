@@ -1,7 +1,6 @@
 import streamlit as st
 from bs4 import BeautifulSoup
 import urllib.parse
-import os
 import requests
 from io import BytesIO
 
@@ -12,66 +11,37 @@ st.set_page_config(page_title="Polaco 666 Games", layout="wide")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Orbitron:wght@400;900&display=swap');
-    
     .stApp { background: #08090b; color: #00ffc3; }
-    
     .logo-666 {
         font-family: 'Black Ops One', cursive; font-size: 60px;
         text-align: center; margin-top: 10px; color: #FF5F1F; 
         animation: vibracion 0.3s linear infinite;
     }
-
-    button[data-baseweb="tab"] {
-        transition: all 0.3s ease-in-out !important;
-    }
-    button[data-baseweb="tab"]:hover {
-        transform: scale(1.15) !important;
-        color: #FF5F1F !important;
-        text-shadow: 0 0 10px #FF5F1F;
-    }
-
     .tarjeta-juego {
         background: rgba(255, 255, 255, 0.02);
         padding: 15px; border-radius: 15px;
         border: 1px solid #222; margin-bottom: 25px;
         text-align: center;
     }
-
     .contenedor-caratula {
         width: 100%; aspect-ratio: 3/4;
         border: 2px solid #FF5F1F; border-radius: 10px;
         overflow: hidden; background: #000;
     }
-
     .img-neon { width: 100%; height: 100%; object-fit: cover; }
-
     .nombre-juego-gigante {
         font-family: 'Orbitron', sans-serif !important;
-        font-size: 18px !important; color: #ffffff !important;
+        font-size: 16px !important; color: #ffffff !important;
         text-shadow: 0 0 8px #FF5F1F !important;
-        margin: 10px 0 !important; display: block !important;
-        min-height: 50px; line-height: 1.1; font-weight: 900 !important;
-        text-transform: uppercase;
+        min-height: 50px; display: flex; align-items: center; justify-content: center;
     }
-
-    .stButton > button {
-        border: 2px solid #FF5F1F !important; background: #111 !important;
-        color: #ffae00 !important; font-weight: bold; width: 100%;
-        font-size: 16px !important;
-    }
-
     .pie-pagina {
         text-align: center; font-family: 'Orbitron', sans-serif;
         color: #FF5F1F; font-size: 13px; margin-top: 50px;
         padding: 40px; border-top: 2px solid #FF5F1F;
         background: rgba(0,0,0,0.9);
     }
-
-    @keyframes vibracion {
-        0% { transform: translate(0); }
-        50% { transform: translate(-1px, 1px); }
-        100% { transform: translate(0); }
-    }
+    @keyframes vibracion { 0% { transform: translate(0); } 50% { transform: translate(-1px, 1px); } 100% { transform: translate(0); } }
 </style>
 <div class="logo-666">POLACO 666 GAMES</div>
 """, unsafe_allow_html=True)
@@ -95,7 +65,6 @@ def hacer_magia(url_descarga, nombre_archivo):
                         porcentaje = min(descargado / total_size, 1.0)
                         progreso.progress(porcentaje)
                         texto_status.markdown(f"<h3 style='color:#00ff00; text-align:center;'>⚡ {int(porcentaje*100)}% - {descargado//1048576} / {total_size//1048576} POLVOS DE DIAMANTE ⚡</h3>", unsafe_allow_html=True)
-            
             st.balloons()
             st.download_button(label="💾 GUARDAR JUEGO", data=buffer.getvalue(), file_name=nombre_archivo)
     except Exception as e:
@@ -116,18 +85,18 @@ urls_base = [
     "https://myrient.erista.me/files/Redump/Sega%20-%20Dreamcast/"
 ]
 
-# TRADUCTOR CON FILTRO AGRESIVO
+# FILTROS DE BÚSQUEDA EXTREMOS
 consola_real_map = {
-    "Dolphin (GC)": "Nintendo GameCube official box art",
-    "Dolphin (Wii)": "Nintendo Wii White Box Art ONLY",
-    "Cemu": "Nintendo Wii U ONLY Blue Case Box Art", # FILTRO PARA NO MEZCLAR
-    "RPCS3": "Sony PlayStation 3 PS3 Box Art",
-    "Xenia": "Microsoft Xbox 360 Box Art",
-    "Xemu": "Original Xbox Classic Box Art",
-    "PCSX2": "Sony PlayStation 2 PS2 Box Art",
-    "DuckStation": "Sony PlayStation 1 PS1 Box Art",
-    "PPSSPP": "Sony PSP Box Art",
-    "Dreamcast": "Sega Dreamcast Box Art"
+    "Dolphin (GC)": "Nintendo GameCube GC Official Cover",
+    "Dolphin (Wii)": "Nintendo Wii White Case ONLY BoxArt",
+    "Cemu": "Nintendo Wii U Blue Case ONLY Official Art",
+    "RPCS3": "Sony PS3 PlayStation 3 Official BoxArt",
+    "Xenia": "Xbox 360 Official BoxArt",
+    "Xemu": "Original Xbox Classic Official Art",
+    "PCSX2": "Sony PS2 PlayStation 2 ONLY BoxArt",
+    "DuckStation": "Sony PS1 PlayStation 1 Original Cover",
+    "PPSSPP": "Sony PSP Handheld Official Art",
+    "Dreamcast": "Sega Dreamcast Official Art"
 }
 
 @st.cache_data(ttl=3600)
@@ -139,7 +108,7 @@ def obtener_lista(url):
     except: return []
 
 abc = ["TODOS", "#"] + list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-idx_abc = st.select_slider('🎮 FILTRAR:', options=range(len(abc)), format_func=lambda x: abc[x])
+idx_abc = st.select_slider('🎮 LETRA:', options=range(len(abc)), format_func=lambda x: abc[x])
 letra_sel = abc[idx_abc]
 busq = st.text_input("🔍 BUSCAR:", "").lower()
 
@@ -148,7 +117,6 @@ for i, tab in enumerate(tabs):
     with tab:
         key_pag = f"pag_{i}"
         if key_pag not in st.session_state: st.session_state[key_pag] = 1
-        
         items = obtener_lista(urls_base[i])
         filtrados = [x for x in items if busq in x.lower()]
         if letra_sel != "TODOS":
@@ -157,48 +125,41 @@ for i, tab in enumerate(tabs):
         juegos_per_page = 12
         total_p = max((len(filtrados)-1)//juegos_per_page + 1, 1)
 
-        # FLECHAS ARRIBA
+        # BOTONES ARRIBA
         c1, c2, c3 = st.columns([1,1,1])
         with c1:
-            if st.button("⬅️ ANTERIOR", key=f"up_prev_{i}"):
+            if st.button("⬅️ ANTERIOR", key=f"up_p_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
         with c2: st.markdown(f"<h3 style='text-align:center;'>{st.session_state[key_pag]} / {total_p}</h3>", unsafe_allow_html=True)
         with c3:
-            if st.button("SIGUIENTE ➡️", key=f"up_next_{i}"):
+            if st.button("SIGUIENTE ➡️", key=f"up_n_{i}"):
                 if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
 
         st.divider()
         inicio = (st.session_state[key_pag] - 1) * juegos_per_page
         cols = st.columns(2)
-        
         for idx, juego in enumerate(filtrados[inicio : inicio + juegos_per_page]):
             with cols[idx % 2]:
                 nombre_visual = juego.replace('.zip','').replace('.rvz','').replace('.7z','').replace('.iso','').replace('.pkg','').replace('.wux','').strip()
                 emulador_puro = tab_names[i].split(" ", 1)[-1]
-                termino_busqueda = consola_real_map.get(emulador_puro, emulador_puro)
-                
-                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(nombre_visual + ' ' + termino_busqueda)}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
-                
-                st.markdown(f'''<div class="tarjeta-juego">
-                    <div class="contenedor-caratula"><img src="{url_img}" class="img-neon"></div>
-                    <span class="nombre-juego-gigante">{nombre_visual}</span>
-                </div>''', unsafe_allow_html=True)
-                
-                if st.button("✨ MAGIA ✨", key=f"btn_{i}_{juego}"):
-                    hacer_magia(urls_base[i] + juego, juego)
+                termino = consola_real_map.get(emulador_puro, emulador_puro)
+                # Búsqueda ultra-específica
+                url_img = f"https://www.bing.com/th?q={urllib.parse.quote(nombre_visual + ' ' + termino)}&w=400&h=550&c=7&rs=1&p=0&pid=ImgDetMain"
+                st.markdown(f'''<div class="tarjeta-juego"><div class="contenedor-caratula"><img src="{url_img}" class="img-neon"></div><span class="nombre-juego-gigante">{nombre_visual}</span></div>''', unsafe_allow_html=True)
+                if st.button("✨ MAGIA ✨", key=f"btn_{i}_{juego}"): hacer_magia(urls_base[i] + juego, juego)
 
-        # FLECHAS ABAJO
+        # BOTONES ABAJO
         st.divider()
         b1, b2, b3 = st.columns([1,1,1])
         with b1:
-            if st.button("⬅️ PÁGINA ANTERIOR", key=f"dw_prev_{i}"):
+            if st.button("⬅️ ANTERIOR ", key=f"dw_p_{i}"):
                 if st.session_state[key_pag] > 1: st.session_state[key_pag] -= 1; st.rerun()
-        with b2: st.markdown(f"<h3 style='text-align:center;'>PÁG {st.session_state[key_pag]}</h3>", unsafe_allow_html=True)
+        with b2: st.markdown(f"<h3 style='text-align:center;'>PÁGINA {st.session_state[key_pag]}</h3>", unsafe_allow_html=True)
         with b3:
-            if st.button("PÁGINA SIGUIENTE ➡️", key=f"dw_next_{i}"):
+            if st.button("SIGUIENTE ➡️ ", key=f"dw_n_{i}"):
                 if st.session_state[key_pag] < total_p: st.session_state[key_pag] += 1; st.rerun()
 
-# --- DERECHOS Y PIE DE PÁGINA ---
+# --- PIE DE PÁGINA: DERECHOS ---
 st.markdown("""
 <div class="pie-pagina">
     <p>POLACO 666 | MULTI-REGIÓN | POLVOS DE DIAMANTE</p>
