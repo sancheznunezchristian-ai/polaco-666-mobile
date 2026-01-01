@@ -1,4 +1,4 @@
- import streamlit as st
+import streamlit as st
 import requests
 import gc
 from bs4 import BeautifulSoup
@@ -104,3 +104,4 @@ for i, tab in enumerate(tabs):
                     )
 
 st.markdown('<div style="text-align:center; padding:30px; color:#FF5F1F;">POLACO 666 | RESET COMPLETADO</div>', unsafe_allow_html=True)       
+
